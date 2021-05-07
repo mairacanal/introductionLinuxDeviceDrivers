@@ -5,9 +5,10 @@
  */
 
 // REMEMBER: The static keyword restricts the visibility of the function to within this C file.
+// Avoid using global variables in kernel -> They are shared with the whole kernel
 
 #include <linux/module.h>	/* Needed by all modules */
-#include <linux/kernel.h>	/* Needed for KERN_ALERT */
+#include <linux/kernel.h>	/* Needed for KERN_INFO */
 #include <linux/init.h>		/* Needed for the macros, e.g. __init, __exit */
 
 MODULE_LICENSE("GPL");                  // License type
@@ -15,7 +16,7 @@ MODULE_AUTHOR("Maíra Canal");           // Author name
 MODULE_DESCRIPTION("Simple module with educational intentions"); // Module description 
 MODULE_VERSION("0.0.1");                // Module version 
 
-static char *name = "Glauco";          // Default value is "world"
+static char *name = "World";          // Default value is "world"
 module_param(name, charp, S_IRUGO);    // Param desc. charp = char ptr, S_IRUGO = can be read/not changed
 MODULE_PARM_DESC(name, "Name that we want to show");  // parameter description
 
@@ -26,7 +27,7 @@ MODULE_PARM_DESC(name, "Name that we want to show");  // parameter description
  */
 static int __init hello_init(void)
 {
-	printk(KERN_INFO "Hello world, %s\n", name);
+	printk(KERN_INFO "Hello %s\n", name);
 	return 0;
 }
 
@@ -36,7 +37,7 @@ static int __init hello_init(void)
  */
 static void __exit hello_exit(void)
 {
-	printk(KERN_INFO "Goodbye world, %s\n", name);
+	printk(KERN_INFO "Goodbye %s\n", name);
 }
  
 /** @brief A module must use the module_init() module_exit() macros from linux/init.h, which
