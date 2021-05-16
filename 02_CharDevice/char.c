@@ -4,7 +4,8 @@
 #include <linux/fs.h>
 #include <linux/device.h>
 #include <linux/uaccess.h>
-#include <linux/mutex.h>
+#include <linux/semaphore.h>
+#include <linux/slab.h>
 
 #define DEVICE_NAME "ebbchar"
 #define CLASS_NAME "ebb"
@@ -15,13 +16,11 @@ MODULE_DESCRIPTION("Simple char device for BBB");
 MODULE_VERSION("0.0.1");
 
 static int majorNumber;
-static char message[256] = {0};
-static short size_of_message;
 static int numberOpens = 0;
 static struct class* ebbcharClass = NULL;
 static struct device* ebbcharDevice = NULL;
 
-static DEFINE_MUTEX(mutex);
+static DEFINE_SEMAPHORE(semaphore);
 
 static int dev_open(struct inode*, struct file*);                        // Called each time the device is opened from user space
 static int dev_release(struct inode*, struct file*);                     // Called when the device is closed in user space
@@ -68,8 +67,8 @@ static int __init ebbchar_init(void) {
     }
     printk(KERN_INFO "EBBChar: device class created correctly\n");
 
-    mutex_init(&mutex);
-    printk(KERN_INFO "EBBChar: mutex initialized");
+    sema_init(&semaphore, 5);
+    printk(KERN_INFO "EBBChar: semaphore initialized");
 
     return 0;
 
@@ -81,7 +80,6 @@ static void __exit ebbchar_exit(void) {
     class_unregister(ebbcharClass);
     class_destroy(ebbcharClass);
     unregister_chrdev(majorNumber, DEVICE_NAME);
-    mutex_destroy(&mutex);
     printk(KERN_INFO "EBBChar: Goodbye from the LKM!\n");
 
 }
@@ -92,7 +90,7 @@ static void __exit ebbchar_exit(void) {
  */
 static int dev_open(struct inode* inodep, struct file* filep){
 
-    if (!mutex_trylock(&mutex)) {
+    if (down_trylock(&semaphore) != 0) {
         printk(KERN_ALERT "EBBChar: device in use by another process\n");
         return -EBUSY; 
     }
@@ -105,7 +103,7 @@ static int dev_open(struct inode* inodep, struct file* filep){
 
 static int dev_release(struct inode* inodep, struct file* filep) {
 
-    mutex_unlock(&mutex);
+    up(&semaphore);
     printk(KERN_INFO "EBBChar: device successfully closed\n");
     return 0;
 
@@ -123,11 +121,12 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
     int error_count = 0;
 
     // copy_to_user has the args (*to, *from, size) and returns 0 on success
-    error_count = copy_to_user(buffer, message, size_of_message);
+    error_count = copy_to_user(buffer, filep->private_data, strlen(filep->private_data));
 
     if (!error_count) {
-        printk(KERN_INFO "EBBChar: sent %d characters to the user\n", size_of_message);
-        return (size_of_message=0);
+        printk(KERN_INFO "EBBChar: sent %d characters to the user\n", (int) strlen(filep->private_data));
+        kfree(filep->private_data);
+        return 0;
     }
 
     printk(KERN_INFO "EBBChar: failed to send %d characters to the user\n", error_count);
@@ -135,8 +134,11 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
 }   
 
 static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, loff_t *offset) {
-    copy_from_user(message, buffer, len);
-    size_of_message = len;
+
+    filep->private_data = (char *) kmalloc(sizeof(char) * len, GFP_KERNEL);
+
+    // copy_from_user has the args (*to, *from, size) and returns 0 on success
+    copy_from_user(filep->private_data, buffer, len);
     printk(KERN_INFO "EBBChar: received %zu characters from the user\n", len);
     return len;
 }
