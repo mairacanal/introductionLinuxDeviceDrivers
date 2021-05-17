@@ -27,6 +27,9 @@ static int dev_release(struct inode*, struct file*);                     // Call
 static ssize_t dev_read(struct file *, char *, size_t, loff_t *);        // Called when data is sent from the device to user space 
 static ssize_t dev_write(struct file *, const char *, size_t, loff_t *); // Caleed when data is sent from the user space to device
 
+/** @brief Devices are represented as file structure in the kernel. The struct file_operations from /linux/fs.h 
+ *  lists the callback functions associated to the file operations
+ */
 static struct file_operations fops = {
     .open = dev_open,
     .read = dev_read,
@@ -34,6 +37,11 @@ static struct file_operations fops = {
     .release = dev_release,
 };
 
+/** @brief LKM initialization function
+ *  Function used at initialization time and is responsable for allocating dynamically
+ *  the major number, registering device class, device driver and semaphore.
+ *  @return returns 0 if successful
+ */
 static int __init ebbchar_init(void) {
 
     printk(KERN_INFO "EBBChar: initializing the EBBChar LKM\n");
@@ -74,12 +82,16 @@ static int __init ebbchar_init(void) {
 
 }
 
+/** @brief LKM cleanup function
+ *  Function responsable for destroying all classes, devices and major number
+ */
 static void __exit ebbchar_exit(void) {
     
-    device_destroy(ebbcharClass,  MKDEV(majorNumber, 0));
-    class_unregister(ebbcharClass);
-    class_destroy(ebbcharClass);
-    unregister_chrdev(majorNumber, DEVICE_NAME);
+    device_destroy(ebbcharClass,  MKDEV(majorNumber, 0));     // remove the device
+    class_unregister(ebbcharClass);                           // unregister the device class
+    class_destroy(ebbcharClass);                              // remove the device class
+    unregister_chrdev(majorNumber, DEVICE_NAME);              // unregister the major number
+
     printk(KERN_INFO "EBBChar: Goodbye from the LKM!\n");
 
 }
@@ -87,9 +99,11 @@ static void __exit ebbchar_exit(void) {
 /** @brief The device open function that is called each time the device is opened
  *  @param inodep A pointer to an inode object (defined in linux/fs.h)
  *  @param filep A pointer to a file object (defined in linux/fs.h)
+ *  @return returns 0 if successful
  */
 static int dev_open(struct inode* inodep, struct file* filep){
 
+    // Tries to hold a semaphore
     if (down_trylock(&semaphore) != 0) {
         printk(KERN_ALERT "EBBChar: device in use by another process\n");
         return -EBUSY; 
@@ -101,8 +115,14 @@ static int dev_open(struct inode* inodep, struct file* filep){
 
 }
 
+/** @brief The device release function that is called each time the device is released 
+ *  @param inodep A pointer to an inode object (defined in linux/fs.h)
+ *  @param filep A pointer to a file object (defined in linux/fs.h)
+ *  @return returns 0 if successful
+ */
 static int dev_release(struct inode* inodep, struct file* filep) {
 
+    // Realeases a semaphore
     up(&semaphore);
     printk(KERN_INFO "EBBChar: device successfully closed\n");
     return 0;
@@ -114,8 +134,9 @@ static int dev_release(struct inode* inodep, struct file* filep) {
  *  to the user and captures any errors.
  *  @param filep A pointer to a file object (defined in linux/fs.h)
  *  @param buffer The pointer to the buffer to which this function writes the data
- *  @param len The length of the b
+ *  @param len The length of the buffer
  *  @param offset The offset if required
+ *  @return returns 0 if successful
  */
 static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *offset) {
     int error_count = 0;
@@ -133,6 +154,15 @@ static ssize_t dev_read(struct file *filep, char *buffer, size_t len, loff_t *of
     return -EFAULT;
 }   
 
+/** @brief This function is called whenever data is being sent from the user to the 
+ *  device. In this case is uses the copy_from_user() function to receive the buffer string
+ *  from the user and captures any errors.
+ *  @param filep A pointer to a file object (defined in linux/fs.h)
+ *  @param buffer The pointer to the buffer to which this function writes the data
+ *  @param len The length of the buffer
+ *  @param offset The offset if required
+ *  @return returns 0 if successful
+ */
 static ssize_t dev_write(struct file *filep, const char *buffer, size_t len, loff_t *offset) {
 
     filep->private_data = (char *) kmalloc(sizeof(char) * len, GFP_KERNEL);
