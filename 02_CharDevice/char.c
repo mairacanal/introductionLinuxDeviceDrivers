@@ -1,3 +1,9 @@
+/*
+ * @file char.c
+ * @brief Simpĺe Char Driver with educational purposes
+ * @author Maíra Canal (@mairacanal)
+ */
+
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
@@ -22,13 +28,16 @@ static struct device* ebbcharDevice = NULL;
 
 static DEFINE_SEMAPHORE(semaphore);
 
-static int dev_open(struct inode*, struct file*);                        // Called each time the device is opened from user space
-static int dev_release(struct inode*, struct file*);                     // Called when the device is closed in user space
-static ssize_t dev_read(struct file *, char *, size_t, loff_t *);        // Called when data is sent from the device to user space 
-static ssize_t dev_write(struct file *, const char *, size_t, loff_t *); // Caleed when data is sent from the user space to device
+static int dev_open(struct inode*, struct file*);                        
+static int dev_release(struct inode*, struct file*);                    
+static ssize_t dev_read(struct file *, char *, size_t, loff_t *);         
+static ssize_t dev_write(struct file *, const char *, size_t, loff_t *); 
 
-/** @brief Devices are represented as file structure in the kernel. The struct file_operations from /linux/fs.h 
- *  lists the callback functions associated to the file operations
+/** 
+ * @brief Devices are represented as file structure in the kernel. 
+ * 
+ * The struct file_operations from /linux/fs.h lists the callback functions 
+ * associated to the file operations
  */
 static struct file_operations fops = {
     .open = dev_open,

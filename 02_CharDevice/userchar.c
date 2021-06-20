@@ -13,7 +13,6 @@ int main(void) {
     int ret, fd;
     char* stringToSend = NULL;
 
-    printf("Starting...\n");
     fd = open("/dev/ebbchar", O_RDWR);
     if (fd < 0) {
         perror("Failed to open the device");
@@ -21,7 +20,6 @@ int main(void) {
     }
 
     printf("Type in a short string to send to the kernel module:\n");
-    // scanf("%[^\n]%*c", stringToSend);
     stringToSend = read_string();
     printf("Writing message to the device [%s].\n", stringToSend);
     ret = write(fd, stringToSend, strlen(stringToSend));
@@ -55,7 +53,7 @@ char* read_string() {
     char c = ' ';
     int count = 0;
 
-    while ((c = getc(stdin)) && c != '\n') {
+    while ((c = getc(stdin)) && (c != '\n' || c != '\0')) {
 
         str = (char*) realloc(str, (count + 1) * sizeof(char));
         str[count++] = c;
