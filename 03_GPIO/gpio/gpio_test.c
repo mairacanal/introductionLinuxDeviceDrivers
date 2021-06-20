@@ -26,7 +26,7 @@ static unsigned int value = 0;
  *  @param irq The irq number
  *  @param dev_id The dev_id registered at request_irq() 
  *  @param regs The value of registers before being interrupted 
- *  @return returns 0 if successful
+ *  @return returns the irq_handler_t struct
  */
 
 static irq_handler_t gpio_irq_handler(unsigned int irq, void *dev_id, struct pt_regs *regs);
