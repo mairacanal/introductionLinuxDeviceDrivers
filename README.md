@@ -7,7 +7,7 @@ This repository was created to share all the results of all my studies of Linux 
 You must compile the kernel modules before inserting them. Remember that the kernel modules are dependent on the Linux headers, so you must have them installed. To install them on Debian, you must run:
 
 ```
-sudo apt search linux-headers-$(uname -r)
+sudo apt install linux-headers-$(uname -r)
 ```
 
 The kernel modules are dependent on the Linux version and architecture. Except for the first kernel module developed, all the kernel modules developed are ready to be cross-compiled. To cross-compile the module to the Beaglebone Black, you must run:
